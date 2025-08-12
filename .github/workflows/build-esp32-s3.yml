@@ -26,11 +26,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Show ESP-IDF environment
+        shell: bash
         run: |
+          set -eo pipefail
+          . "${IDF_PATH}/export.sh"
           echo "IDF_PATH=$IDF_PATH"
+          which cmake || true
           cmake --version
+          which ninja || true
           ninja --version || true
           python3 --version
+          idf.py --version || true
 
       - name: Clone nf-interpreter (with submodules)
         run: |
@@ -38,15 +44,24 @@ jobs:
 
       - name: List available CMake presets
         working-directory: nf-interpreter
-        run: cmake --list-presets
+        shell: bash
+        run: |
+          . "${IDF_PATH}/export.sh"
+          cmake --list-presets
 
       - name: Configure (CMake preset)
         working-directory: nf-interpreter
-        run: cmake --preset "${{ github.event.inputs.configure_preset || 'ESP32_S3_DEVKIT' }}"
+        shell: bash
+        run: |
+          . "${IDF_PATH}/export.sh"
+          cmake --preset "${{ github.event.inputs.configure_preset || 'ESP32_S3_DEVKIT' }}"
 
       - name: Build (Release)
         working-directory: nf-interpreter
-        run: cmake --build --preset "${{ github.event.inputs.configure_preset || 'ESP32_S3_DEVKIT' }}" --parallel
+        shell: bash
+        run: |
+          . "${IDF_PATH}/export.sh"
+          cmake --build --preset "${{ github.event.inputs.configure_preset || 'ESP32_S3_DEVKIT' }}" --parallel
 
       - name: Collect firmware artifacts
         shell: bash
