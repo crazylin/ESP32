@@ -30,6 +30,7 @@ jobs:
       options: --user 0:0
     defaults:
       run:
+        shell: bash
         working-directory: ${{ env.PROJECT_DIR }}
     env:
       IDF_TARGET: esp32s3
@@ -92,6 +93,20 @@ jobs:
           idf.py --version
           cmake --version
           ninja --version || true
+
+      - name: Validate project directory
+        run: |
+          echo "PROJECT_DIR=${PROJECT_DIR}"
+          if [ ! -d "${PROJECT_DIR}" ]; then
+            echo "ERROR: PROJECT_DIR does not exist: ${PROJECT_DIR}" >&2
+            exit 2
+          fi
+          if [ ! -f "${PROJECT_DIR}/CMakeLists.txt" ]; then
+            echo "ERROR: CMakeLists.txt not found in project directory: ${PROJECT_DIR}" >&2
+            echo "Hint: Set workflow input 'project_dir' to the ESP-IDF project folder (contains CMakeLists.txt)." >&2
+            echo "If you enabled 'checkout_nf_interpreter', point 'project_dir' to the specific example or target directory inside it that is an ESP-IDF project." >&2
+            exit 2
+          fi
 
       - name: Configure target
         run: |
