@@ -21,7 +21,6 @@ jobs:
                        cd nf-interpreter && \
                        if [ -f /opt/esp/idf/export.sh ]; then . /opt/esp/idf/export.sh; \
                        elif [ -f /sources/esp-idf/export.sh ]; then . /sources/esp-idf/export.sh; fi; \
-                       idf.py set-target esp32s3 && \
                        idf.py -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 build"
 
       - name: Upload firmware artifact
