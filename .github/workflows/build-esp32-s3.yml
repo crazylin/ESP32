@@ -63,6 +63,21 @@ jobs:
             echo "$preset_file already exists"
           fi
 
+      - name: Ensure user prefs preset exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          preset_file="nf-interpreter/config/user-prefs.json"
+          if [[ ! -f "$preset_file" ]]; then
+            mkdir -p "$(dirname "$preset_file")"
+            printf '%s\n' '{' \
+              '  "version": 3' \
+              '}' > "$preset_file"
+            echo "Created default $preset_file"
+          else
+            echo "$preset_file already exists"
+          fi
+
       - name: List available CMake presets
         working-directory: nf-interpreter
         shell: bash
