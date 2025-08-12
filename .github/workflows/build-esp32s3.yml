@@ -13,15 +13,19 @@ jobs:
       - name: Build firmware inside container
         run: |
           docker run --rm \
+            -v ${{ github.workspace }}:/work \
+            -w /work \
             ghcr.io/nanoframework/dev-container-esp32:latest \
-            bash -c "apt-get update && apt-get install -y libusb-1.0-0 git && \
-                     git clone --recursive https://github.com/nanoframework/nf-interpreter.git /project && \
-                     cd /project && \
-                     source /sources/esp-idf/export.sh && \
-                     idf.py -DTARGET_BOARD=ESP32_S3 build"
+            bash -lc "apt-get update && apt-get install -y libusb-1.0-0 git && \
+                       git clone --recursive https://github.com/nanoframework/nf-interpreter.git && \
+                       cd nf-interpreter && \
+                       if [ -f /opt/esp/idf/export.sh ]; then . /opt/esp/idf/export.sh; \
+                       elif [ -f /sources/esp-idf/export.sh ]; then . /sources/esp-idf/export.sh; fi; \
+                       idf.py set-target esp32s3 && \
+                       idf.py -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 build"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware-esp32s3
-          path: nf-interpreter/build/*.bin
+          path: nf-interpreter/build/**/*.bin
