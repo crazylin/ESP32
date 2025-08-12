@@ -5,6 +5,15 @@ on:
     branches: [ main, master ]
   pull_request:
   workflow_dispatch:
+    inputs:
+      project_dir:
+        description: "Relative path to ESP-IDF project (contains CMakeLists.txt)"
+        required: false
+        default: "."
+      checkout_nf_interpreter:
+        description: "Also checkout nanoframework/nf-interpreter into external/nf-interpreter"
+        required: false
+        default: "false"
 
 permissions:
   contents: read
@@ -19,14 +28,26 @@ jobs:
     container:
       image: espressif/idf:release-v5.1
       options: --user 0:0
+    defaults:
+      run:
+        working-directory: ${{ env.PROJECT_DIR }}
     env:
       IDF_TARGET: esp32s3
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       IDF_CCACHE_ENABLE: "1"
+      PROJECT_DIR: ${{ github.event.inputs.project_dir || '.' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          submodules: recursive
+
+      - name: Checkout nanoFramework nf-interpreter (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.checkout_nf_interpreter == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: nanoframework/nf-interpreter
+          path: external/nf-interpreter
           submodules: recursive
 
       - name: Cache ccache
@@ -81,8 +102,8 @@ jobs:
 
       - name: Use project sdkconfig if present
         run: |
-          if [ -f "ci/sdkconfig.esp32s3" ] && [ ! -f "sdkconfig" ]; then
-            cp ci/sdkconfig.esp32s3 sdkconfig
+          if [ -f "${GITHUB_WORKSPACE}/ci/sdkconfig.esp32s3" ] && [ ! -f "sdkconfig" ]; then
+            cp "${GITHUB_WORKSPACE}/ci/sdkconfig.esp32s3" sdkconfig
           fi
 
       - name: Build
@@ -108,7 +129,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firmware-esp32s3-idf5.1
-          path: out
+          path: ${{ env.PROJECT_DIR }}/out
           if-no-files-found: warn
 
 
