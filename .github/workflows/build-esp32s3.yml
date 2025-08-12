@@ -18,7 +18,6 @@ jobs:
                      git clone --recursive https://github.com/nanoframework/nf-interpreter.git /project && \
                      cd /project && \
                      source /sources/esp-idf/export.sh && \
-                     idf.py set-target esp32s3 && \
                      idf.py -DTARGET_BOARD=ESP32_S3 build"
 
       - name: Upload firmware artifact
