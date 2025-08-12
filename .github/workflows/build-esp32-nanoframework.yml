@@ -22,6 +22,7 @@ on:
         options:
           - Release
           - Debug
+  
 
 env:
   ESP_IDF_VERSION: 'v4.4.6'
