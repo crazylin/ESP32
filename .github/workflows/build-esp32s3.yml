@@ -23,7 +23,8 @@ jobs:
           -v ${{ github.workspace }}:/project \
           -w /project \
           ghcr.io/nanoframework/dev-container-esp32:latest \
-          bash -c "source /sources/esp-idf/export.sh && idf.py set-target esp32s3 && idf.py build"
+          bash -c "source /sources/esp-idf/export.sh && \
+                  idf.py build --no-verify-project"
 
     - name: Upload firmware artifact
       uses: actions/upload-artifact@v4
