@@ -3,8 +3,6 @@ name: Build ESP32 nanoFramework
 on:
   push:
     branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -13,7 +11,7 @@ jobs:
     
     strategy:
       matrix:
-        target: [ESP32_GENERIC, ESP32_GENERIC_REV3, ESP32_PICO, ESP32_WROVER_KIT]
+        target: [ESP32_S3]
     
     steps:
     - name: Checkout repository
