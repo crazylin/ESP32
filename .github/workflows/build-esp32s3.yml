@@ -1,35 +1,32 @@
-name: Build ESP32-S3 firmware
+name: Build ESP32S3 Firmware
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Pull ESP32 Dev Container image
-      run: docker pull ghcr.io/nanoframework/dev-container-esp32:latest
+      - name: Clone nf-interpreter
+        run: |
+          git clone --recursive https://github.com/nanoframework/nf-interpreter.git
+          cd nf-interpreter
+          # 这里可以切换分支或tag
+          # git checkout <branch_or_tag>
 
-    - name: Build firmware in container
-      run: |
-        docker run --rm \
-          -v ${{ github.workspace }}:/project \
-          -w /project \
-          ghcr.io/nanoframework/dev-container-esp32:latest \
-          bash -c "apt-get update && apt-get install -y libusb-1.0-0 && \
-                  source /sources/esp-idf/export.sh && \
-                  idf_tools.py install openocd-esp32 && \
-                  idf.py set-target esp32s3 && idf.py build"
-
-    - name: Upload firmware artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: firmware-esp32s3
-        path: build/*.bin
+      - name: Build firmware in container
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/nf-interpreter:/project \
+            -w /project \
+            ghcr.io/nanoframework/dev-container-esp32:latest \
+            bash -c "apt-get update && apt-get install -y libusb-1.0-0 && \
+                     source /sources/esp-idf/export.sh && \
+                     idf_tools.py install openocd-esp32 && \
+                     idf.py set-target esp32s3 && \
+                     idf.py build"
