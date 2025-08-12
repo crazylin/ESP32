@@ -1,0 +1,84 @@
+name: Build ESP32-S3 (ESP-IDF in container)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/espressif/idf:release-v5.1
+      options: --user 0:0
+    env:
+      IDF_TARGET: esp32s3
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      IDF_CCACHE_ENABLE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-${{ runner.os }}-idf5.1-${{ hashFiles('**/*', '!**/.git/**', '!**/.ccache/**', '!**/build/**') }}
+          restore-keys: |
+            ccache-${{ runner.os }}-idf5.1-
+
+      - name: Install Python requirements
+        run: |
+          python3 --version
+          pip3 --version || python3 -m ensurepip
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r $IDF_PATH/requirements.txt
+
+      - name: Show versions
+        run: |
+          idf.py --version
+          cmake --version
+          ninja --version || true
+
+      - name: Configure target
+        run: idf.py set-target esp32s3
+
+      - name: Use project sdkconfig if present
+        run: |
+          if [ -f "ci/sdkconfig.esp32s3" ] && [ ! -f "sdkconfig" ]; then
+            cp ci/sdkconfig.esp32s3 sdkconfig
+          fi
+
+      - name: Build
+        run: idf.py -v build
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          mkdir -p out
+          cp -v build/*.bin out/ 2>/dev/null || true
+          cp -v build/*.elf out/ 2>/dev/null || true
+          cp -v build/*.map out/ 2>/dev/null || true
+          for f in build/bootloader/*.bin; do [ -f "$f" ] && cp -v "$f" "out/bootloader.bin"; done
+          for f in build/partition_table/*.bin; do [ -f "$f" ] && cp -v "$f" "out/partition-table.bin"; done
+          for f in build/*-firmware.bin; do [ -f "$f" ] && cp -v "$f" "out/firmware.bin"; done
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-esp32s3-idf5.1
+          path: out
+          if-no-files-found: warn
+
+
