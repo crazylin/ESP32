@@ -1,0 +1,92 @@
+name: Build ESP32 (Linux + Cache)
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # ESP-IDF version to use
+  IDF_VERSION: v5.2.1
+  # Pin dependencies under workspace for stable caching
+  IDF_DIR: ${{ github.workspace }}/_deps/esp-idf
+  IDF_TOOLS_PATH: ${{ github.workspace }}/_deps/.espressif
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Cache ESP-IDF repo to speed up clone
+      - name: Cache ESP-IDF repo
+        id: cache-idf
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.IDF_DIR }}
+          key: ${{ runner.os }}-esp-idf-${{ env.IDF_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-esp-idf-
+
+      # Cache ESP-IDF tools (toolchain, python env, cmake/ninja)
+      - name: Cache ESP-IDF tools
+        id: cache-tools
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.IDF_TOOLS_PATH }}
+          key: ${{ runner.os }}-idf-tools-${{ env.IDF_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-idf-tools-
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y git wget flex bison gperf python3 python3-venv python3-pip cmake ninja-build ccache libffi-dev libssl-dev dfu-util
+
+      - name: Fetch/Install ESP-IDF
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "${{ env.IDF_DIR }}")"
+          if [ ! -d "${{ env.IDF_DIR }}" ]; then
+            git clone --depth 1 --branch "${IDF_VERSION}" https://github.com/espressif/esp-idf.git "${{ env.IDF_DIR }}"
+          else
+            git -C "${{ env.IDF_DIR }}" fetch --tags --depth 1 origin "${IDF_VERSION}"
+            git -C "${{ env.IDF_DIR }}" checkout "${IDF_VERSION}"
+          fi
+          cd "${{ env.IDF_DIR }}"
+          bash ./install.sh
+
+      - name: Build (idf.py)
+        shell: bash
+        working-directory: .
+        env:
+          IDF_PATH: ${{ env.IDF_DIR }}
+          IDF_TOOLS_PATH: ${{ env.IDF_TOOLS_PATH }}
+        run: |
+          set -euo pipefail
+          . "${IDF_PATH}/export.sh"
+          idf.py --version
+          idf.py set-target esp32
+          idf.py build
+
+      - name: Upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-firmware-linux
+          path: |
+            build/*.bin
+            build/*.elf
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+
+
