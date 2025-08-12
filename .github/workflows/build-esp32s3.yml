@@ -25,7 +25,7 @@ jobs:
                        export IDF_PATH=/sources/esp-idf; \
                        export IDF_TARGET=esp32s3; \
                        rm -rf build; \
-                       idf.py -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 -DTARGET_SERIES=ESP32_S3 -DESP32_IDF_PATH=/sources/esp-idf -DIDF_TARGET=esp32s3 -DCMAKE_TOOLCHAIN_FILE=/sources/esp-idf/tools/cmake/toolchain-esp32s3.cmake build"
+                       idf.py -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 -DTARGET_SERIES=ESP32_S3 -DESP32_IDF_PATH=/sources/esp-idf -DIDF_TARGET=esp32s3 build"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
