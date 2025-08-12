@@ -23,7 +23,8 @@ jobs:
                        elif [ -f /sources/esp-idf/export.sh ]; then . /sources/esp-idf/export.sh; \
                        elif [ -n \"$IDF_PATH\" ] && [ -f \"$IDF_PATH/export.sh\" ]; then . \"$IDF_PATH/export.sh\"; fi; \
                        rm -rf build; \
-                       idf.py -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 -DTARGET_SERIES=ESP32_S3 -DESP32_IDF_PATH=/sources/esp-idf -DIDF_TARGET=esp32s3 -DCMAKE_TOOLCHAIN_FILE=/sources/esp-idf/tools/cmake/toolchain-esp32s3.cmake build"
+                       idf.py set-target esp32s3 && \
+                       idf.py build"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
