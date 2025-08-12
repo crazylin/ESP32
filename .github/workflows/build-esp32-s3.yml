@@ -68,23 +68,30 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p firmware
-          # core outputs
-          cp -v nf-interpreter/build/nanoCLR.bin firmware/ || true
-          cp -v nf-interpreter/build/bootloader/bootloader.bin firmware/ || true
-          # try to grab partition table bins and other relevant binaries
-          shopt -s nullglob
-          for f in \
-            nf-interpreter/build/*partitions*.bin \
-            nf-interpreter/build/partitions*.bin \
-            nf-interpreter/build/partition*.bin \
-            nf-interpreter/build/*.bin; do
-            base=$(basename "$f")
-            if [[ "$base" != "nanoCLR.bin" && "$base" != "bootloader.bin" ]]; then
-              cp -v "$f" firmware/
+          build_dir=""
+          if [[ -d nf-interpreter/build ]]; then
+            build_dir="nf-interpreter/build"
+          else
+            cache_file=$(find nf-interpreter -maxdepth 3 -type f -name CMakeCache.txt | head -n 1 || true)
+            if [[ -n "${cache_file}" ]]; then
+              build_dir=$(dirname "${cache_file}")
             fi
-          done
-          # include full build folder for inspection
-          (cd nf-interpreter && tar -czf ../firmware/build-folder.tar.gz build)
+          fi
+          echo "Detected build directory: ${build_dir:-<none>}"
+          # core outputs (best-effort)
+          [[ -n "${build_dir}" ]] && cp -v "${build_dir}/nanoCLR.bin" firmware/ || true
+          [[ -n "${build_dir}" ]] && cp -v "${build_dir}/bootloader/bootloader.bin" firmware/ || true
+          # collect all other .bin files recursively, excluding duplicates
+          if [[ -n "${build_dir}" ]]; then
+            while IFS= read -r -d '' f; do
+              base=$(basename "$f")
+              if [[ "$base" != "nanoCLR.bin" && "$base" != "bootloader.bin" ]]; then
+                cp -v "$f" firmware/
+              fi
+            done < <(find "${build_dir}" -type f -name "*.bin" -print0)
+            # include full build folder for inspection
+            tar -czf firmware/build-folder.tar.gz -C "${build_dir}" .
+          fi
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
