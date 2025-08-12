@@ -23,7 +23,7 @@ jobs:
         docker run --rm \
           -v ${{ github.workspace }}:/project \
           -w /project \
-          ghcr.io/${{ github.repository_owner }}/dev-container-esp32:latest \
+          ghcr.io/nanoframework/dev-container-esp32:latest \
           bash -c "idf.py set-target esp32s3 && idf.py build"
 
     - name: Upload firmware artifact
