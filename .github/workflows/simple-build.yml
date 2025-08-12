@@ -1,8 +1,6 @@
 name: Simple ESP32 nanoFramework Build
 
 on:
-  push:
-    branches: [ main, develop ]
   workflow_dispatch:
 
 jobs:

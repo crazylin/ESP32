@@ -1,8 +1,6 @@
 name: Build ESP32 nanoFramework Firmware
 
 on:
-  push:
-    branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       target_board:
