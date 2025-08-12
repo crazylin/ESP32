@@ -1,0 +1,22 @@
+name: ESP32 Build Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target board'
+        required: true
+        default: 'ESP32_WROOM_32'
+        type: choice
+        options:
+          - ESP32_WROOM_32
+          - ESP32_WROVER_KIT
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Test
+        run: echo "Build test for ${{ github.event.inputs.target }}"
