@@ -16,7 +16,7 @@ env:
   IDF_DIR: ${{ github.workspace }}/_deps/esp-idf
   IDF_TOOLS_PATH: ${{ github.workspace }}/_deps/.espressif
   # Default target; change to esp32s3, esp32c3, etc., if needed
-  IDF_TARGET: esp32
+  IDF_TARGET: esp32s3
 
 jobs:
   build:
@@ -74,7 +74,6 @@ jobs:
           IDF_PATH: ${{ env.IDF_DIR }}
           IDF_TOOLS_PATH: ${{ env.IDF_TOOLS_PATH }}
         run: |
-          mkdir -p build
           set -euo pipefail
           . "${IDF_PATH}/export.sh"
           idf.py --version
