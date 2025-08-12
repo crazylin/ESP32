@@ -1,0 +1,105 @@
+name: Build ESP32 nanoFramework
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        target: [ESP32_GENERIC, ESP32_GENERIC_REV3, ESP32_PICO, ESP32_WROVER_KIT]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache Python packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          git \
+          wget \
+          unzip \
+          build-essential \
+          cmake \
+          ninja-build \
+          ccache \
+          libffi-dev \
+          libssl-dev \
+          dfu-util \
+          libusb-1.0-0
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install esptool
+    
+    - name: Setup ESP-IDF
+      run: |
+        mkdir -p ~/esp
+        cd ~/esp
+        git clone --recursive https://github.com/espressif/esp-idf.git
+        cd esp-idf
+        git checkout v4.4.7
+        ./install.sh esp32
+        echo "IDF_PATH=$HOME/esp/esp-idf" >> $GITHUB_ENV
+    
+    - name: Clone nanoFramework ESP32 repository
+      run: |
+        cd ~/esp
+        git clone --recursive https://github.com/nanoframework/nf-interpreter.git
+        cd nf-interpreter
+        git submodule update --init --recursive
+    
+    - name: Configure build environment
+      run: |
+        cd ~/esp/nf-interpreter
+        source $IDF_PATH/export.sh
+        echo "PATH=$PATH" >> $GITHUB_ENV
+        echo "IDF_TOOLS_PATH=$HOME/.espressif" >> $GITHUB_ENV
+    
+    - name: Build nanoFramework for ${{ matrix.target }}
+      run: |
+        cd ~/esp/nf-interpreter
+        source $IDF_PATH/export.sh
+        cmake --preset ${{ matrix.target }} .
+        cmake --build --preset ${{ matrix.target }} --parallel $(nproc)
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nanoframework-${{ matrix.target }}-${{ github.sha }}
+        path: |
+          ~/esp/nf-interpreter/build/${{ matrix.target }}/*.bin
+          ~/esp/nf-interpreter/build/${{ matrix.target }}/*.elf
+          ~/esp/nf-interpreter/build/${{ matrix.target }}/bootloader/bootloader.bin
+          ~/esp/nf-interpreter/build/${{ matrix.target }}/partition_table/partition-table.bin
+        retention-days: 30
+    
+    - name: Show build information
+      run: |
+        cd ~/esp/nf-interpreter/build/${{ matrix.target }}
+        ls -la *.bin *.elf || true
+        echo "Build completed for ${{ matrix.target }}"
