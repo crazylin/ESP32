@@ -1,0 +1,82 @@
+name: Build nanoFramework ESP32-S3 firmware
+
+on:
+  workflow_dispatch:
+    inputs:
+      configure_preset:
+        description: 'CMake configure preset name in nf-interpreter (e.g. ESP32_S3_DEVKIT)'
+        required: false
+        default: 'ESP32_S3_DEVKIT'
+      idf_version:
+        description: 'ESP-IDF version tag (e.g. v5.2.1, v5.1.2, or latest)'
+        required: false
+        default: 'latest'
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show ESP-IDF environment
+        run: |
+          echo "IDF_PATH=$IDF_PATH"
+          cmake --version
+          ninja --version || true
+          python3 --version
+
+      - name: Clone nf-interpreter (with submodules)
+        run: |
+          git clone --depth 1 --recurse-submodules https://github.com/nanoframework/nf-interpreter.git
+
+      - name: List available CMake presets
+        working-directory: nf-interpreter
+        run: cmake --list-presets
+
+      - name: Configure (CMake preset)
+        working-directory: nf-interpreter
+        run: cmake --preset "${{ github.event.inputs.configure_preset || 'ESP32_S3_DEVKIT' }}"
+
+      - name: Build (Release)
+        working-directory: nf-interpreter
+        run: cmake --build --preset "${{ github.event.inputs.configure_preset || 'ESP32_S3_DEVKIT' }}" --parallel
+
+      - name: Collect firmware artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p firmware
+          # core outputs
+          cp -v nf-interpreter/build/nanoCLR.bin firmware/ || true
+          cp -v nf-interpreter/build/bootloader/bootloader.bin firmware/ || true
+          # try to grab partition table bins and other relevant binaries
+          shopt -s nullglob
+          for f in \
+            nf-interpreter/build/*partitions*.bin \
+            nf-interpreter/build/partitions*.bin \
+            nf-interpreter/build/partition*.bin \
+            nf-interpreter/build/*.bin; do
+            base=$(basename "$f")
+            if [[ "$base" != "nanoCLR.bin" && "$base" != "bootloader.bin" ]]; then
+              cp -v "$f" firmware/
+            fi
+          done
+          # include full build folder for inspection
+          (cd nf-interpreter && tar -czf ../firmware/build-folder.tar.gz build)
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32s3-firmware
+          path: firmware
+          if-no-files-found: warn
+          retention-days: 7
+
+
