@@ -60,7 +60,7 @@ def main() -> None:
     if env_invalid:
         invalid_presets = {p.strip() for p in env_invalid.split(",") if p.strip()}
     else:
-        invalid_presets = {"AtomS3", "BrainPad2"}
+        invalid_presets = {"AtomS3", "BrainPad2", "ESP32_BLE_REV0"}
 
     removed_any = False
     for dirpath, _, filenames in os.walk(root):
@@ -72,9 +72,9 @@ def main() -> None:
                     print(f"Updated {full_path}")
 
     if not removed_any:
-        print("No AtomS3 presets changed")
+        print("No invalid presets needed changes")
     else:
-        print("Patched preset files to remove/strip AtomS3")
+        print("Patched preset files to remove/strip invalid presets")
 
 
 if __name__ == "__main__":
