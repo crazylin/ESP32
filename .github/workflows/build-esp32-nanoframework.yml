@@ -181,7 +181,7 @@ jobs:
           -DAPI_Windows.Devices.SerialCommunication=ON `
           -DAPI_nanoFramework.ResourceManager=ON `
           -DAPI_nanoFramework.System.Collections=ON `
-          -API_nanoFramework.System.Text=ON `
+          -DAPI_nanoFramework.System.Text=ON `
           ..
 
     - name: Build nanoCLR
@@ -232,7 +232,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Download all artifacts
@@ -246,23 +246,23 @@ jobs:
         tag: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
         body: |
-          自动构建的 nanoFramework ESP32 固件
-          
-          包含以下目标板的固件：
-          - ESP32_WROOM_32
-          - ESP32_WROVER_KIT
-          - ESP32_PICO
-          - ESP32_S2
-          - ESP32_C3
-          
-          构建类型：Release
-          
-          ## 文件说明
-          - `nanoCLR.bin`: nanoCLR 固件
-          - `nanoBooter.bin`: nanoBooter 引导程序
-          - `bootloader.bin`: ESP32 引导加载器
-          - `partitions.bin`: 分区表
-          - `*.elf`: 调试符号文件
-          - `*.hex`: Intel HEX 格式文件
+      Auto-built nanoFramework ESP32 firmware
+
+      Includes firmware for the following target boards:
+      - ESP32_WROOM_32
+      - ESP32_WROVER_KIT
+      - ESP32_PICO
+      - ESP32_S2
+      - ESP32_C3
+
+      Build type: ${{ github.event.inputs.build_type || 'Release' }}
+
+      ## File Description
+      - `nanoCLR.bin`: nanoCLR firmware
+      - `nanoBooter.bin`: nanoBooter bootloader
+      - `bootloader.bin`: ESP32 bootloader
+      - `partitions.bin`: partition table
+      - `*.elf`: debug symbol files
+      - `*.hex`: Intel HEX format files
         artifacts: "artifacts/**/*.zip"
         token: ${{ secrets.GITHUB_TOKEN }}

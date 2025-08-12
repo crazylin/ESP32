@@ -23,55 +23,54 @@ jobs:
         script: |
           const owner = context.repo.owner;
           const repo = context.repo.repo;
-          
-          console.log(`🔍 开始清理 ${owner}/${repo} 的缓存...`);
-          
-          // 获取所有缓存
+
+          console.log(`🔍 Starting cleanup for ${owner}/${repo} caches...`);
+
+          // Get all caches
           const caches = await github.rest.actions.getActionsCacheList({
             owner,
             repo,
             per_page: 100
           });
-          
-          console.log(`📊 找到 ${caches.data.actions_caches.length} 个缓存`);
-          
+
+          console.log(`📊 Found ${caches.data.actions_caches.length} caches`);
+
           let deletedCount = 0;
           let totalSize = 0;
-          
+
           for (const cache of caches.data.actions_caches) {
             const cacheAge = Date.now() - new Date(cache.created_at).getTime();
             const cacheAgeDays = Math.floor(cacheAge / (1000 * 60 * 60 * 24));
-            
-            console.log(`📦 缓存: ${cache.key}`);
-            console.log(`   大小: ${(cache.size_in_bytes / 1024 / 1024).toFixed(2)} MB`);
-            console.log(`   创建时间: ${cache.created_at}`);
-            console.log(`   年龄: ${cacheAgeDays} 天`);
-            
-            // 删除超过 7 天的缓存
+
+            console.log(`📦 Cache: ${cache.key}`);
+            console.log(`   Size: ${(cache.size_in_bytes / 1024 / 1024).toFixed(2)} MB`);
+            console.log(`   Created: ${cache.created_at}`);
+            console.log(`   Age: ${cacheAgeDays} days`);
+
+            // Delete caches older than 7 days
             if (cacheAgeDays > 7) {
               if (!core.getInput('dry_run') || core.getInput('dry_run') === 'true') {
-                console.log(`   🗑️  将删除: ${cache.key}`);
+                console.log(`   🗑️  Will delete: ${cache.key}`);
               } else {
                 await github.rest.actions.deleteActionsCacheByKey({
                   owner,
                   repo,
                   key: cache.key
                 });
-                console.log(`   ✅ 已删除: ${cache.key}`);
+                console.log(`   ✅ Deleted: ${cache.key}`);
               }
-              
               deletedCount++;
               totalSize += cache.size_in_bytes;
             }
           }
-          
-          console.log(`\n🧹 清理完成`);
-          console.log(`   删除数量: ${deletedCount}`);
-          console.log(`   释放空间: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
-          
+
+          console.log(`\n🧹 Cleanup completed`);
+          console.log(`   Deleted count: ${deletedCount}`);
+          console.log(`   Space freed: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+
           if (core.getInput('dry_run') === 'true') {
-            console.log(`\n⚠️  这是干运行，实际未删除任何缓存`);
-            console.log(`   设置 dry_run=false 来实际执行清理`);
+            console.log(`\n⚠️  This was a dry run, no caches were actually deleted`);
+            console.log(`   Set dry_run=false to actually perform cleanup`);
           }
 
   cleanup-logs:
@@ -85,23 +84,23 @@ jobs:
         script: |
           const owner = context.repo.owner;
           const repo = context.repo.repo;
-          
-          // 获取工作流运行记录
+
+          // Get workflow runs
           const runs = await github.rest.actions.listWorkflowRunsForRepo({
             owner,
             repo,
             per_page: 100
           });
-          
-          console.log(`📋 找到 ${runs.data.workflow_runs.length} 个工作流运行记录`);
-          
+
+          console.log(`📋 Found ${runs.data.workflow_runs.length} workflow runs`);
+
           let deletedLogs = 0;
-          
+
           for (const run of runs.data.workflow_runs) {
             const runAge = Date.now() - new Date(run.created_at).getTime();
             const runAgeDays = Math.floor(runAge / (1000 * 60 * 60 * 24));
-            
-            // 删除超过 30 天的日志
+
+            // Delete logs older than 30 days
             if (runAgeDays > 30) {
               try {
                 await github.rest.actions.deleteWorkflowRunLogs({
@@ -109,13 +108,13 @@ jobs:
                   repo,
                   run_id: run.id
                 });
-                console.log(`🗑️  已删除工作流 #${run.id} 的日志`);
+                console.log(`🗑️  Deleted logs for workflow #${run.id}`);
                 deletedLogs++;
               } catch (error) {
-                console.log(`⚠️  无法删除工作流 #${run.id} 的日志: ${error.message}`);
+                console.log(`⚠️  Could not delete logs for workflow #${run.id}: ${error.message}`);
               }
             }
           }
-          
-          console.log(`\n🧹 日志清理完成`);
-          console.log(`   删除日志数量: ${deletedLogs}`);
+
+          console.log(`\n🧹 Log cleanup completed`);
+          console.log(`   Deleted logs count: ${deletedLogs}`);

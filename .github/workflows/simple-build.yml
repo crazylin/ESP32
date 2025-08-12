@@ -59,15 +59,15 @@ jobs:
     - name: Build ESP32 firmware
       shell: powershell
       run: |
-        # 设置构建环境
+        # Setup build environment
         $env:IDF_PATH = "C:\esp-idf"
         $env:PATH = "$env:IDF_PATH\tools;$env:PATH"
-        
-        # 创建构建目录
+
+        # Create build directory
         mkdir build -Force
         cd build
-        
-        # 配置构建
+
+        # Configure build
         cmake -G Ninja `
           -DTOOLCHAIN_PREFIX="C:/esp-idf/tools/tools/xtensa-esp32-elf" `
           -DESP32_IDF_PATH="C:/esp-idf" `
@@ -75,7 +75,7 @@ jobs:
           -DTARGET_NAME=ESP32_WROOM_32 `
           ..
         
-        # 构建固件
+        # Build firmware
         cmake --build . --target all
         
     - name: Upload firmware
