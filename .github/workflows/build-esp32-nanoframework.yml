@@ -22,7 +22,6 @@ on:
         options:
           - Release
           - Debug
-  
 
 env:
   ESP_IDF_VERSION: 'v4.4.6'
@@ -104,10 +103,10 @@ jobs:
       shell: powershell
       run: |
         Write-Host "ESP-IDF not found in cache, installing..."
-        # 下载 ESP-IDF 安装器
+        # Download ESP-IDF installer
         Invoke-WebRequest -Uri "https://dl.espressif.com/dl/esp-idf/?idf=4.4" -OutFile "esp-idf-tools-setup.exe"
         
-        # 静默安装 ESP-IDF
+        # Silent install ESP-IDF
         Start-Process -FilePath "esp-idf-tools-setup.exe" -ArgumentList "/SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /IDFDIR=C:\esp-idf /IDFVERSION=${{ env.ESP_IDF_VERSION }}" -Wait
 
     - name: Install CMake (if not cached)
@@ -115,7 +114,7 @@ jobs:
       shell: powershell
       run: |
         Write-Host "CMake not found in cache, installing..."
-        # 下载并安装 CMake
+        # Download and install CMake
         Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v${{ env.CMAKE_VERSION }}/cmake-${{ env.CMAKE_VERSION }}-windows-x86_64.msi" -OutFile "cmake.msi"
         Start-Process -FilePath "msiexec.exe" -ArgumentList "/i cmake.msi /quiet /norestart" -Wait
 
@@ -124,7 +123,7 @@ jobs:
       shell: powershell
       run: |
         Write-Host "Ninja not found in cache, installing..."
-        # 下载 Ninja
+        # Download Ninja
         Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v${{ env.NINJA_VERSION }}/ninja-win.zip" -OutFile "ninja.zip"
         Expand-Archive -Path "ninja.zip" -DestinationPath "C:\ninja"
 
@@ -182,7 +181,7 @@ jobs:
           -DAPI_Windows.Devices.SerialCommunication=ON `
           -DAPI_nanoFramework.ResourceManager=ON `
           -DAPI_nanoFramework.System.Collections=ON `
-          -DAPI_nanoFramework.System.Text=ON `
+          -API_nanoFramework.System.Text=ON `
           ..
 
     - name: Build nanoCLR
@@ -201,16 +200,16 @@ jobs:
       shell: powershell
       run: |
         cd build
-        # 创建固件包
+        # Create firmware package
         $firmwareDir = "firmware_${{ matrix.target_board }}_${{ matrix.build_type }}"
         mkdir $firmwareDir
         
-        # 复制生成的文件
+        # Copy generated files
         Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.bin" -Destination $firmwareDir -Recurse
         Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.hex" -Destination $firmwareDir -Recurse
         Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.elf" -Destination $firmwareDir -Recurse
         
-        # 创建压缩包
+        # Create archive
         Compress-Archive -Path $firmwareDir -DestinationPath "$firmwareDir.zip"
 
     - name: Upload firmware artifacts
