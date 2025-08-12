@@ -74,6 +74,7 @@ jobs:
           IDF_PATH: ${{ env.IDF_DIR }}
           IDF_TOOLS_PATH: ${{ env.IDF_TOOLS_PATH }}
         run: |
+          mkdir -p build
           set -euo pipefail
           . "${IDF_PATH}/export.sh"
           idf.py --version
