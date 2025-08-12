@@ -43,6 +43,12 @@ jobs:
           git clone --depth 1 --recurse-submodules https://github.com/nanoframework/nf-interpreter.git
           git -C nf-interpreter submodule update --init --recursive
 
+      - name: Work around invalid AtomS3 preset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/patch_presets.py
+
       - name: Ensure user tools repos preset exists
         shell: bash
         run: |
