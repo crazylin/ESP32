@@ -86,7 +86,7 @@ jobs:
         cmake --build --preset ${{ matrix.target }} --parallel $(nproc)
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: nanoframework-${{ matrix.target }}-${{ github.sha }}
         path: |
