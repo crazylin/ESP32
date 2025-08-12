@@ -17,7 +17,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/espressif/idf:release-v5.1
+      image: espressif/idf:release-v5.1
       options: --user 0:0
     env:
       IDF_TARGET: esp32s3
