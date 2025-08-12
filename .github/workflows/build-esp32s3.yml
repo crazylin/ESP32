@@ -1,4 +1,4 @@
-name: Build ESP32-S3 Firmware
+name: Build ESP32-S3 firmware
 
 on:
   push:
@@ -14,17 +14,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Pull ESP32 dev container image
-      run: |
-        docker pull ghcr.io/nanoframework/dev-container-esp32:latest
+    - name: Pull ESP32 Dev Container image
+      run: docker pull ghcr.io/nanoframework/dev-container-esp32:latest
 
-    - name: Build firmware inside container
+    - name: Build firmware in container
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/project \
           -w /project \
           ghcr.io/nanoframework/dev-container-esp32:latest \
-          bash -c "idf.py set-target esp32s3 && idf.py build"
+          bash -c "source /sources/esp-idf/export.sh && idf.py set-target esp32s3 && idf.py build"
 
     - name: Upload firmware artifact
       uses: actions/upload-artifact@v4
