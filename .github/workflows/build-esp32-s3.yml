@@ -41,6 +41,27 @@ jobs:
       - name: Clone nf-interpreter (with submodules)
         run: |
           git clone --depth 1 --recurse-submodules https://github.com/nanoframework/nf-interpreter.git
+          git -C nf-interpreter submodule update --init --recursive
+
+      - name: Ensure user tools repos preset exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          preset_file="nf-interpreter/config/user-tools-repos.json"
+          if [[ ! -f "$preset_file" ]]; then
+            mkdir -p "$(dirname "$preset_file")"
+            printf '%s\n' '{' \
+              '  "version": 3,' \
+              '  "vendor": {' \
+              '    "nanoframework": {' \
+              '      "userToolsRepos": []' \
+              '    }' \
+              '  }' \
+              '}' > "$preset_file"
+            echo "Created default $preset_file"
+          else
+            echo "$preset_file already exists"
+          fi
 
       - name: List available CMake presets
         working-directory: nf-interpreter
