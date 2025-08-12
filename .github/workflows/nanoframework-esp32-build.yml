@@ -39,11 +39,6 @@ jobs:
   build:
     runs-on: windows-latest
     
-    strategy:
-      matrix:
-        target_board: [${{ github.event.inputs.target_board || 'ESP32_WROOM_32' }}]
-        build_type: [${{ github.event.inputs.build_type || 'Release' }}]
-    
     steps:
       - name: Checkout nanoFramework repository
         uses: actions/checkout@v4
@@ -180,8 +175,8 @@ jobs:
           cd nf-interpreter/build
           
           # Set build configuration based on inputs
-          $buildType = "${{ matrix.build_type }}"
-          $targetBoard = "${{ matrix.target_board }}"
+          $buildType = "${{ github.event.inputs.build_type || 'Release' }}"
+          $targetBoard = "${{ github.event.inputs.target_board || 'ESP32_WROOM_32' }}"
           $debugEnabled = "${{ github.event.inputs.enable_debug && 'ON' || 'OFF' }}"
           
           # Configure build with CMake
@@ -198,6 +193,87 @@ jobs:
             -DAPI_System.Device.I2c=ON `
             -DAPI_System.Device.Pwm=ON `
             -DAPI_System.Device.SerialCommunication=ON `
+            -DAPI_Windows.Devices.Gpio=ON `
+            -DAPI_Windows.Devices.Spi=ON `
+            -DAPI_Windows.Devices.I2c=ON `
+            -DAPI_Windows.Devices.Pwm=ON `
+            -DAPI_Windows.Devices.SerialCommunication=ON `
+            -DAPI_nanoFramework.ResourceManager=ON `
+            -DAPI_nanoFramework.System.Collections=ON `
+            -DAPI_nanoFramework.System.Text=ON `
+            -DAPI_System.Net=ON `
+            -DAPI_System.Device.Wifi=ON `
+            -DAPI_System.Device.Adc=ON `
+            -DAPI_System.Device.Dac=ON `
+            -DAPI_Hardware.Esp32=ON `
+            -DAPI_nanoFramework.Hardware.Esp32.Rmt=ON `
+            -DAPI_nanoFramework.Networking.Sntp=ON `
+            -DAPI_nanoFramework.System.IO.FileSystem=ON `
+            -DAPI_nanoFramework.System.IO.Streams=ON `
+            -DCMAKE_INCLUDE_DEBUG_INFO=$debugEnabled ..
+
+      - name: Build nanoCLR
+        shell: powershell
+        run: |
+          cd nf-interpreter/build
+          cmake --build . --target nanoCLR
+
+      - name: Build nanoBooter
+        shell: powershell
+        run: |
+          cd nf-interpreter/build
+          cmake --build . --target nanoBooter
+
+      - name: Build bootloader and partitions
+        shell: powershell
+        run: |
+          cd nf-interpreter/build
+          cmake --build . --target bootloader
+          cmake --build . --target partitions
+
+      - name: Create firmware package
+        shell: powershell
+        run: |
+          cd nf-interpreter/build
+          
+          $buildType = "${{ github.event.inputs.build_type || 'Release' }}"
+          $targetBoard = "${{ github.event.inputs.target_board || 'ESP32_WROOM_32' }}"
+          $firmwareDir = "nanoFramework-firmware-$targetBoard-$buildType"
+          mkdir $firmwareDir -Force
+          
+          # Copy firmware files
+          Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.bin" -Destination $firmwareDir -Recurse -ErrorAction SilentlyContinue
+          Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.hex" -Destination $firmwareDir -Recurse -ErrorAction SilentlyContinue
+          Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.elf" -Destination $firmwareDir -Recurse -ErrorAction SilentlyContinue
+          
+          # Create archive
+          Compress-Archive -Path $firmwareDir -DestinationPath "$firmwareDir.zip" -Force
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: nanoFramework-firmware-${{ github.event.inputs.target_board || 'ESP32_WROOM_32' }}-${{ github.event.inputs.build_type || 'Release' }}
+          path: nf-interpreter/build/nanoFramework-firmware-*.zip
+          retention-days: 30
+
+      - name: Upload individual binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: nanoFramework-binaries-${{ github.event.inputs.target_board || 'ESP32_WROOM_32' }}-${{ github.event.inputs.build_type || 'Release' }}
+          path: |
+            nf-interpreter/build/targets/FreeRTOS/ESP32/_IDF/*.bin
+            nf-interpreter/build/targets/FreeRTOS/ESP32/_IDF/*.hex
+            nf-interpreter/build/targets/FreeRTOS/ESP32/_IDF/*.elf
+          retention-days: 30
+
+      - name: Display build summary
+        shell: powershell
+        run: |
+          Write-Host "=== Build Summary ==="
+          Write-Host "Target Board: ${{ github.event.inputs.target_board || 'ESP32_WROOM_32' }}"
+          Write-Host "Build Type: ${{ github.event.inputs.build_type || 'Release' }}"
+          Write-Host "Debug Enabled: ${{ github.event.inputs.enable_debug }}"
+          Write-Host "Build completed successfully!" `
             -DAPI_Windows.Devices.Gpio=ON `
             -DAPI_Windows.Devices.Spi=ON `
             -DAPI_Windows.Devices.I2c=ON `
