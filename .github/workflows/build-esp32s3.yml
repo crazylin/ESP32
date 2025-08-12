@@ -16,7 +16,7 @@ jobs:
 
     - name: Pull ESP32 dev container image
       run: |
-        docker pull ghcr.io/${{ github.repository_owner }}/dev-container-esp32:latest
+        docker pull ghcr.io/nanoframework/dev-container-esp32:latest
 
     - name: Build firmware inside container
       run: |
