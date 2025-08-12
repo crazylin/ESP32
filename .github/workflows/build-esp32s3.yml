@@ -22,6 +22,13 @@ jobs:
                        if [ -f /opt/esp/idf/export.sh ]; then . /opt/esp/idf/export.sh; \
                        elif [ -f /sources/esp-idf/export.sh ]; then . /sources/esp-idf/export.sh; \
                        elif [ -n \"$IDF_PATH\" ] && [ -f \"$IDF_PATH/export.sh\" ]; then . \"$IDF_PATH/export.sh\"; fi; \
+                       echo \"Using IDF_PATH=$IDF_PATH\"; \
+                       if [ -n \"$IDF_PATH\" ] && [ -d \"$IDF_PATH/.git\" ]; then \
+                         git -C \"$IDF_PATH\" fetch --tags --force && \
+                         git -C \"$IDF_PATH\" checkout v5.2.3 && \
+                         git -C \"$IDF_PATH\" submodule update --init --recursive; \
+                         . \"$IDF_PATH/export.sh\"; \
+                       fi; \
                        idf.py -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 -DTARGET_SERIES=ESP32_S3 -DESP32_IDF_PATH=$IDF_PATH build"
 
       - name: Upload firmware artifact
