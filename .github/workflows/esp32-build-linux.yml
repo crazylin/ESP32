@@ -75,7 +75,7 @@ jobs:
           set -euo pipefail
           . "${IDF_PATH}/export.sh"
           idf.py --version
-          idf.py set-target esp32
+          idf.py set-target esp32_S3
           idf.py build
 
       - name: Upload artifacts
