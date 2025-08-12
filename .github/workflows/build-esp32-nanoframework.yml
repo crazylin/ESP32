@@ -1,0 +1,272 @@
+name: Build ESP32 nanoFramework Firmware
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      target_board:
+        description: 'Target ESP32 board'
+        required: true
+        default: 'ESP32_WROOM_32'
+        type: choice
+        options:
+          - ESP32_WROOM_32
+          - ESP32_WROVER_KIT
+          - ESP32_PICO
+          - ESP32_S2
+          - ESP32_C3
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Release
+          - Debug
+
+env:
+  ESP_IDF_VERSION: 'v4.4.6'
+  CMAKE_VERSION: '3.21.0'
+  NINJA_VERSION: '1.10.0'
+  PYTHON_VERSION: '3.8'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        target_board: [${{ github.event.inputs.target_board || 'ESP32_WROOM_32' }}]
+        build_type: [${{ github.event.inputs.build_type || 'Release' }}]
+    
+    steps:
+    - name: Checkout nf-interpreter repository
+      uses: actions/checkout@v4
+      with:
+        repository: nanoframework/nf-interpreter
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Cache ESP-IDF
+      uses: actions/cache@v3
+      id: cache-esp-idf
+      with:
+        path: |
+          C:\esp-idf
+          C:\esp-idf-tools
+        key: ${{ runner.os }}-esp-idf-${{ env.ESP_IDF_VERSION }}-${{ hashFiles('.github/workflows/config.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-esp-idf-${{ env.ESP_IDF_VERSION }}-
+
+    - name: Cache CMake
+      uses: actions/cache@v3
+      id: cache-cmake
+      with:
+        path: |
+          C:\Program Files\CMake
+          C:\CMake
+        key: ${{ runner.os }}-cmake-${{ env.CMAKE_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-
+
+    - name: Cache Ninja
+      uses: actions/cache@v3
+      id: cache-ninja
+      with:
+        path: |
+          C:\ninja
+        key: ${{ runner.os }}-ninja-${{ env.NINJA_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-ninja-
+
+    - name: Cache Python packages
+      uses: actions/cache@v3
+      id: cache-python
+      with:
+        path: |
+          ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install ESP-IDF Tools (if not cached)
+      if: steps.cache-esp-idf.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        Write-Host "ESP-IDF not found in cache, installing..."
+        # 下载 ESP-IDF 安装器
+        Invoke-WebRequest -Uri "https://dl.espressif.com/dl/esp-idf/?idf=4.4" -OutFile "esp-idf-tools-setup.exe"
+        
+        # 静默安装 ESP-IDF
+        Start-Process -FilePath "esp-idf-tools-setup.exe" -ArgumentList "/SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /IDFDIR=C:\esp-idf /IDFVERSION=${{ env.ESP_IDF_VERSION }}" -Wait
+
+    - name: Install CMake (if not cached)
+      if: steps.cache-cmake.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        Write-Host "CMake not found in cache, installing..."
+        # 下载并安装 CMake
+        Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v${{ env.CMAKE_VERSION }}/cmake-${{ env.CMAKE_VERSION }}-windows-x86_64.msi" -OutFile "cmake.msi"
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i cmake.msi /quiet /norestart" -Wait
+
+    - name: Install Ninja (if not cached)
+      if: steps.cache-ninja.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        Write-Host "Ninja not found in cache, installing..."
+        # 下载 Ninja
+        Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v${{ env.NINJA_VERSION }}/ninja-win.zip" -OutFile "ninja.zip"
+        Expand-Archive -Path "ninja.zip" -DestinationPath "C:\ninja"
+
+    - name: Install Python dependencies
+      shell: powershell
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyserial esptool pycryptodome --cache-dir ~\AppData\Local\pip\Cache
+
+    - name: Set PATH environment variables
+      shell: powershell
+      run: |
+        echo "C:\esp-idf\tools" >> $env:GITHUB_PATH
+        echo "C:\esp-idf\tools\idf.py" >> $env:GITHUB_PATH
+        echo "C:\esp-idf\tools\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin" >> $env:GITHUB_PATH
+        echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
+        echo "C:\ninja" >> $env:GITHUB_PATH
+
+    - name: Setup Visual Studio Build Tools
+      uses: microsoft/setup-msbuild@v1.3
+
+    - name: Configure ESP-IDF environment
+      shell: cmd
+      run: |
+        cd C:\esp-idf
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        call install.bat esp32
+        call export.bat
+
+    - name: Create build directory
+      shell: powershell
+      run: |
+        mkdir build
+        cd build
+
+    - name: Configure CMake build
+      shell: powershell
+      run: |
+        cd build
+        cmake -G Ninja `
+          -DTOOLCHAIN_PREFIX="C:/esp-idf/tools/tools/xtensa-esp32-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32-elf" `
+          -DESP32_IDF_PATH="C:/esp-idf" `
+          -DTOOL_HEX2DFU_PREFIX="C:/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/IDE/Extensions/Microsoft/VC/Tools/MSVC/14.34.31933/bin/Hostx64/x64" `
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+          -DTARGET_NAME=${{ matrix.target_board }} `
+          -DAPI_System.Device.Gpio=ON `
+          -DAPI_System.Device.Spi=ON `
+          -DAPI_System.Device.I2c=ON `
+          -DAPI_System.Device.Pwm=ON `
+          -DAPI_System.Device.SerialCommunication=ON `
+          -DAPI_Windows.Devices.Gpio=ON `
+          -DAPI_Windows.Devices.Spi=ON `
+          -DAPI_Windows.Devices.I2c=ON `
+          -DAPI_Windows.Devices.Pwm=ON `
+          -DAPI_Windows.Devices.SerialCommunication=ON `
+          -DAPI_nanoFramework.ResourceManager=ON `
+          -DAPI_nanoFramework.System.Collections=ON `
+          -DAPI_nanoFramework.System.Text=ON `
+          ..
+
+    - name: Build nanoCLR
+      shell: powershell
+      run: |
+        cd build
+        cmake --build . --target nanoCLR
+
+    - name: Build nanoBooter
+      shell: powershell
+      run: |
+        cd build
+        cmake --build . --target nanoBooter
+
+    - name: Create firmware package
+      shell: powershell
+      run: |
+        cd build
+        # 创建固件包
+        $firmwareDir = "firmware_${{ matrix.target_board }}_${{ matrix.build_type }}"
+        mkdir $firmwareDir
+        
+        # 复制生成的文件
+        Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.bin" -Destination $firmwareDir -Recurse
+        Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.hex" -Destination $firmwareDir -Recurse
+        Copy-Item -Path "targets\FreeRTOS\ESP32\_IDF\*.elf" -Destination $firmwareDir -Recurse
+        
+        # 创建压缩包
+        Compress-Archive -Path $firmwareDir -DestinationPath "$firmwareDir.zip"
+
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nanoFramework-firmware-${{ matrix.target_board }}-${{ matrix.build_type }}
+        path: build/firmware_${{ matrix.target_board }}_${{ matrix.build_type }}.zip
+        retention-days: 30
+
+    - name: Upload individual binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: nanoFramework-binaries-${{ matrix.target_board }}-${{ matrix.build_type }}
+        path: |
+          build/targets/FreeRTOS/ESP32/_IDF/*.bin
+          build/targets/FreeRTOS/ESP32/_IDF/*.hex
+          build/targets/FreeRTOS/ESP32/_IDF/*.elf
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        body: |
+          自动构建的 nanoFramework ESP32 固件
+          
+          包含以下目标板的固件：
+          - ESP32_WROOM_32
+          - ESP32_WROVER_KIT
+          - ESP32_PICO
+          - ESP32_S2
+          - ESP32_C3
+          
+          构建类型：Release
+          
+          ## 文件说明
+          - `nanoCLR.bin`: nanoCLR 固件
+          - `nanoBooter.bin`: nanoBooter 引导程序
+          - `bootloader.bin`: ESP32 引导加载器
+          - `partitions.bin`: 分区表
+          - `*.elf`: 调试符号文件
+          - `*.hex`: Intel HEX 格式文件
+        artifacts: "artifacts/**/*.zip"
+        token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,53 @@
+# GitHub Actions 缓存配置
+# 这个文件用于配置缓存策略和优化构建性能
+
+cache_strategies:
+  # ESP-IDF 工具链缓存
+  esp_idf:
+    key_prefix: "esp-idf"
+    paths:
+      - "C:\\esp-idf"
+      - "C:\\esp-idf-tools"
+    version: "v4.4.6"
+    # 缓存有效期：7天
+    max_age: 604800
+    
+  # CMake 缓存
+  cmake:
+    key_prefix: "cmake"
+    paths:
+      - "C:\\Program Files\\CMake"
+      - "C:\\CMake"
+    version: "3.21.0"
+    max_age: 604800
+    
+  # Ninja 构建工具缓存
+  ninja:
+    key_prefix: "ninja"
+    paths:
+      - "C:\\ninja"
+    version: "1.10.0"
+    max_age: 604800
+    
+  # Python 包缓存
+  python:
+    key_prefix: "python"
+    paths:
+      - "~\\AppData\\Local\\pip\\Cache"
+    max_age: 259200  # 3天
+    
+  # 构建缓存
+  build_cache:
+    key_prefix: "build"
+    paths:
+      - "build/_deps"
+      - "build/CMakeFiles"
+      - "build/esp-idf"
+    max_age: 86400  # 1天
+
+# 缓存优化建议
+optimization_tips:
+  - "使用 restore-keys 提高缓存命中率"
+  - "为不同工具使用独立的缓存键"
+  - "定期更新缓存键版本"
+  - "监控缓存大小，避免超出限制"

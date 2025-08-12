@@ -1,0 +1,58 @@
+# GitHub Actions 构建配置
+# 这个文件用于自定义构建参数
+
+# 默认配置
+defaults:
+  target_board: "ESP32_WROOM_32"
+  build_type: "Release"
+  
+# 支持的构建目标
+supported_targets:
+  - ESP32_WROOM_32
+  - ESP32_WROVER_KIT
+  - ESP32_PICO
+  - ESP32_S2
+  - ESP32_C3
+
+# 构建选项
+build_options:
+  # 核心 API
+  core_apis:
+    - API_System.Device.Gpio=ON
+    - API_System.Device.Spi=ON
+    - API_System.Device.I2c=ON
+    - API_System.Device.Pwm=ON
+    - API_System.Device.SerialCommunication=ON
+    - API_Windows.Devices.Gpio=ON
+    - API_Windows.Devices.Spi=ON
+    - API_Windows.Devices.I2c=ON
+    - API_Windows.Devices.Pwm=ON
+    - API_Windows.Devices.SerialCommunication=ON
+    - API_nanoFramework.ResourceManager=ON
+    - API_nanoFramework.System.Collections=ON
+    - API_nanoFramework.System.Text=ON
+  
+  # 可选功能
+  optional_features:
+    - API_System.Net=ON
+    - API_System.Device.Wifi=ON
+    - API_System.Device.Adc=ON
+    - API_System.Device.Dac=ON
+    - API_Hardware.Esp32=ON
+    - API_nanoFramework.Hardware.Esp32.Rmt=ON
+    - API_nanoFramework.Networking.Sntp=ON
+    - API_nanoFramework.System.IO.FileSystem=ON
+    - API_nanoFramework.System.IO.Streams=ON
+
+# 版本配置
+versions:
+  esp_idf: "v4.4.6"
+  cmake: "3.21.0"
+  ninja: "1.10.0"
+  python: "3.8"
+
+# 环境变量
+environment:
+  ESP_IDF_PATH: "C:\\esp-idf"
+  IDF_TOOLS_PATH: "C:\\esp-idf\\tools"
+  PATH: "C:\\esp-idf\\tools;C:\\Program Files\\CMake\\bin;C:\\ninja"

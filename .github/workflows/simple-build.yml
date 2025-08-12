@@ -1,0 +1,92 @@
+name: Simple ESP32 nanoFramework Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        repository: nanoframework/nf-interpreter
+        submodules: recursive
+
+    - name: Cache ESP-IDF and tools
+      uses: actions/cache@v3
+      id: cache-tools
+      with:
+        path: |
+          C:\esp-idf
+          C:\esp-idf-tools
+          C:\Program Files\CMake
+          C:\ninja
+        key: ${{ runner.os }}-nanoframework-tools-${{ hashFiles('.github/workflows/config.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-nanoframework-tools-
+
+    - name: Cache Python packages
+      uses: actions/cache@v3
+      id: cache-python
+      with:
+        path: |
+          ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Setup environment (if not cached)
+      if: steps.cache-tools.outputs.cache-hit != 'true'
+      uses: nanoframework/nf-tools@v1
+      with:
+        esp32: true
+        cmake: true
+        ninja: true
+
+    - name: Setup cached environment
+      if: steps.cache-tools.outputs.cache-hit == 'true'
+      shell: powershell
+      run: |
+        Write-Host "Using cached tools..."
+        $env:IDF_PATH = "C:\esp-idf"
+        $env:PATH = "$env:IDF_PATH\tools;$env:PATH"
+        echo "C:\esp-idf\tools" >> $env:GITHUB_PATH
+        echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
+        echo "C:\ninja" >> $env:GITHUB_PATH
+
+    - name: Build ESP32 firmware
+      shell: powershell
+      run: |
+        # 设置构建环境
+        $env:IDF_PATH = "C:\esp-idf"
+        $env:PATH = "$env:IDF_PATH\tools;$env:PATH"
+        
+        # 创建构建目录
+        mkdir build -Force
+        cd build
+        
+        # 配置构建
+        cmake -G Ninja `
+          -DTOOLCHAIN_PREFIX="C:/esp-idf/tools/tools/xtensa-esp32-elf" `
+          -DESP32_IDF_PATH="C:/esp-idf" `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DTARGET_NAME=ESP32_WROOM_32 `
+          ..
+        
+        # 构建固件
+        cmake --build . --target all
+        
+    - name: Upload firmware
+      uses: actions/upload-artifact@v3
+      with:
+        name: esp32-nanoframework-firmware
+        path: |
+          build/**/*.bin
+          build/**/*.hex
+          build/**/*.elf
