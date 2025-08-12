@@ -44,18 +44,40 @@ jobs:
             apt-get update
             apt-get install -y python3-pip
           fi
+          # Try to export IDF environment if available
+          if [ -f "/opt/esp/idf/export.sh" ]; then
+            . "/opt/esp/idf/export.sh"
+          fi
+          : "${IDF_PATH:=/opt/esp/idf}"
           python3 -m pip --version
           python3 -m pip install --upgrade pip
-          python3 -m pip install -r "$IDF_PATH/requirements.txt"
+          REQ_FILE="$IDF_PATH/requirements.txt"
+          if [ ! -f "$REQ_FILE" ]; then
+            echo "requirements.txt not found at $REQ_FILE — attempting to locate..."
+            REQ_FILE=$(python3 -c "import glob; c=glob.glob('/opt/esp/idf*/requirements.txt'); print(c[0] if c else '')")
+          fi
+          if [ -n "$REQ_FILE" ] && [ -f "$REQ_FILE" ]; then
+            echo "Installing IDF Python requirements from $REQ_FILE"
+            python3 -m pip install -r "$REQ_FILE"
+          else
+            echo "WARNING: Could not find IDF requirements.txt. Skipping Python deps install."
+          fi
 
       - name: Show versions
         run: |
+          if [ -f "/opt/esp/idf/export.sh" ]; then
+            . "/opt/esp/idf/export.sh"
+          fi
           idf.py --version
           cmake --version
           ninja --version || true
 
       - name: Configure target
-        run: idf.py set-target esp32s3
+        run: |
+          if [ -f "/opt/esp/idf/export.sh" ]; then
+            . "/opt/esp/idf/export.sh"
+          fi
+          idf.py set-target esp32s3
 
       - name: Use project sdkconfig if present
         run: |
@@ -64,7 +86,11 @@ jobs:
           fi
 
       - name: Build
-        run: idf.py -v build
+        run: |
+          if [ -f "/opt/esp/idf/export.sh" ]; then
+            . "/opt/esp/idf/export.sh"
+          fi
+          idf.py -v build
 
       - name: Collect artifacts
         if: always()
