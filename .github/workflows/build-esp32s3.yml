@@ -17,11 +17,10 @@ jobs:
             -w /work \
             ghcr.io/nanoframework/dev-container-esp32:latest \
             bash -lc "apt-get update && apt-get install -y libusb-1.0-0 git && \
-                       git clone --recursive https://github.com/nanoframework/nf-interpreter.git && \
-                       cd nf-interpreter && \
-                       if [ -f /opt/esp/idf/export.sh ]; then . /opt/esp/idf/export.sh; \
-                       elif [ -f /sources/esp-idf/export.sh ]; then . /sources/esp-idf/export.sh; fi; \
-                       idf.py -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 build"
+            git clone --recursive https://github.com/nanoframework/nf-interpreter.git && \
+            cd nf-interpreter && \
+            source /sources/esp-idf/export.sh && \
+            idf.py -DRTOS=ESP32 -DRTOS=ESP32 -DTARGET_BOARD=ESP32_S3 build"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
