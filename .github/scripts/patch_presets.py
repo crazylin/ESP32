@@ -1,16 +1,26 @@
 import json
 import os
+from fnmatch import fnmatchcase
+
+
+def _matches_invalid(name: str, invalid_patterns: set[str]) -> bool:
+    if not name:
+        return False
+    for pattern in invalid_patterns:
+        if fnmatchcase(name, pattern):
+            return True
+    return False
 
 
 def _strip_invalid_inherits(preset: dict, invalid_presets: set[str]) -> bool:
     changed = False
     inherits = preset.get("inherits")
     if isinstance(inherits, str):
-        if inherits in invalid_presets:
+        if _matches_invalid(inherits, invalid_presets):
             del preset["inherits"]
             changed = True
     elif isinstance(inherits, list):
-        new_inherits = [x for x in inherits if x not in invalid_presets]
+        new_inherits = [x for x in inherits if not _matches_invalid(x, invalid_presets)]
         if len(new_inherits) != len(inherits):
             changed = True
             if new_inherits:
@@ -32,7 +42,7 @@ def _process_file(file_path: str, invalid_presets: set[str]) -> bool:
     if isinstance(data, dict) and isinstance(data.get("configurePresets"), list):
         original_count = len(data["configurePresets"])
         data["configurePresets"] = [
-            p for p in data["configurePresets"] if p.get("name") not in invalid_presets
+            p for p in data["configurePresets"] if not _matches_invalid(p.get("name"), invalid_presets)
         ]
         if len(data["configurePresets"]) != original_count:
             changed = True
@@ -55,12 +65,12 @@ def _process_file(file_path: str, invalid_presets: set[str]) -> bool:
 
 def main() -> None:
     root = "nf-interpreter"
-    # Allow override via environment variable, e.g.: INVALID_PRESETS="AtomS3,BrainPad2"
+    # Allow override via environment variable, e.g.: INVALID_PRESETS="AtomS3,BrainPad2,ESP32_BLE_REV*"
     env_invalid = os.environ.get("INVALID_PRESETS", "").strip()
     if env_invalid:
         invalid_presets = {p.strip() for p in env_invalid.split(",") if p.strip()}
     else:
-        invalid_presets = {"AtomS3", "BrainPad2", "ESP32_BLE_REV0"}
+        invalid_presets = {"AtomS3", "BrainPad2", "ESP32_BLE_REV*"}
 
     removed_any = False
     for dirpath, _, filenames in os.walk(root):

@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export INVALID_PRESETS="AtomS3,BrainPad2,ESP32_BLE_REV0"
+          export INVALID_PRESETS="AtomS3,BrainPad2,ESP32_BLE_REV*"
           python3 .github/scripts/patch_presets.py
 
       - name: Ensure user tools repos preset exists
